@@ -1,0 +1,36 @@
+@Library('blackduck-logs-publisher') _
+
+pipeline {
+    agent { label 'mac-sh' }
+
+    stages {
+        
+        stage("blackduck-security-scan") {
+            steps {
+                script {
+                    dir('nodejs-npm') {
+                        def projectName = env.JOB_NAME.split('/')[0]
+                        echo "DETECT_PROJECT_NAME will be set to: ${projectName}"
+
+                        withEnv(["DETECT_PROJECT_NAME=${projectName}"]) {
+                            security_scan blackducksca_scan_full: true, 
+                                         blackducksca_waitForScan: true, 
+                                         mark_build_status: 'FAILURE', 
+                                         product: 'blackducksca'
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            pushJenkinsLogsToGitHub([
+                githubOrg: 'blackducksca-jenkins-samples',
+                repoName: 'buildless-scan',
+                retentionCount: 5
+            ])
+        }
+    }
+}
